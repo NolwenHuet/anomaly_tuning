@@ -65,10 +65,6 @@ def est_tuning(X_train, X_test, base_estimator, param_grid,
         base_estimator instantiated with the best hyperparameter and fitted on
         X_train.
 
-    offsets_est : array, shape (n_alphas)
-        Offsets of the score obtained from clf_est corresponding to the
-        probabilities of the alphas array
-
     """
 
     auc_est = np.zeros(len(param_grid))
@@ -105,22 +101,7 @@ def est_tuning(X_train, X_test, base_estimator, param_grid,
     clf_est = base_estimator(**best_param)
     clf_est.fit(X_train)
 
-    clf_test = clf_est.score_samples(X_test)
-    min_test = np.min(clf_test)
-    max_test = np.max(clf_test)
-
-    offsets_est = np.zeros(len(alphas))
-    for a, alpha in enumerate(alphas):
-        def f(x):
-            return np.mean((clf_test - x) >= 0) - alpha
-
-        b = bisect(f, min_test - 1e-12, max_test + 1e-12, xtol=1e-12,
-                   maxiter=1000, full_output=False)
-        b = b - 1e-12  # for robustness of the code
-
-        offsets_est[a] = b
-
-    return clf_est, offsets_est
+    return clf_est
 
 
 def anomaly_tuning(X,
@@ -129,7 +110,7 @@ def anomaly_tuning(X,
                    cv=None,
                    n_sim=10000,
                    alphas=np.arange(0.05, 1., 0.05),
-                   random_state=42,
+                   random_state=None,
                    n_jobs=1,
                    ):
     """The data set X is randomly split into a training set X_train and a test
@@ -184,10 +165,6 @@ def anomaly_tuning(X,
         with the best hyperparameters learnt from their corresponding random
         split and fitted on X_train.
 
-    offsets : array, shape (n_estimator, n_alphas)
-        Offsets of the anomaly detection estimators of the ensemble
-        corresponding to the probabilities of the alphas array
-
     """
 
     n_samples, n_features = X.shape
@@ -213,7 +190,7 @@ def anomaly_tuning(X,
 
     vol = np.zeros((len(alphas), len(param_grid)))
 
-    res = Parallel(n_jobs=n_jobs, verbose=10)(
+    clfs = Parallel(n_jobs=n_jobs, verbose=10)(
         delayed(est_tuning)(
             X[train], X[test],
             base_estimator,
@@ -224,7 +201,4 @@ def anomaly_tuning(X,
             vol_tot_cube)
         for train, test in cv.split(X))
 
-    models = list(list(zip(*res))[0])
-    offsets = np.array(list(zip(*res))[1])
-
-    return models, offsets
+    return clfs
