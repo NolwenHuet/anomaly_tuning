@@ -81,7 +81,7 @@ for algo in algorithms:
     print('--------------', name_algo, ' -------------')
     parameters = algo_param[name_algo]
 
-    models, offsets = anomaly_tuning(X, base_estimator=algo,
+    models = anomaly_tuning(X, base_estimator=algo,
                                      parameters=parameters,
                                      random_state=42,
                                      cv=cv, n_jobs=N_JOBS)
